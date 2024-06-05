@@ -126,7 +126,7 @@ def infer_with_pytorch_model(model_path, input_data):
 #     output = interpreter.get_tensor(output_details[0]['index'])
 #     return output
 
-fpath = ['./combined_data.csv', './combined_data_small.csv']
+fpath = ['./combined_data_20240603_171745.csv', './combined_data_small.csv']
 datasets_list = []
 for raw_data_path in fpath:
     datasets_list.append(IndentDataset(raw_data_path, skip=0))

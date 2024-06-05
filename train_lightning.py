@@ -88,7 +88,7 @@ class ReskinModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=5)
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=15)
         return {
             'optimizer': optimizer,
             'lr_scheduler': {
@@ -110,14 +110,14 @@ fy, fz
 class IndentDataset(Dataset):
     def __init__(self, file_path, skip=0):
         # Load the data from the CSV file using numpy
-        data = np.genfromtxt(file_path, delimiter=',', skip_header=1)
+        data = np.genfromtxt(file_path, delimiter=',', skip_header=2)
         self.norm_vecB = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 
                                   0.1, 0.1, 0.1, 0.1, 0.1, 
                                   0.1, 0.1, 0.1, 0.1, 0.1])
         self.norm_vecF = np.array([0.1, 0.1, -0.25])
 
         # Extract the input features (B) and the labels (xyF)
-        self.B = data[:, 6:21]*self.norm_vecB
+        self.B = data[:, 5:20]*self.norm_vecB
         self.xyF = data[:, [1,2,-1]]*self.norm_vecF
 
         self.skip = skip
@@ -135,10 +135,11 @@ class IndentDataset(Dataset):
         return B_sample, xyF_sample
 
 
-def main(fpath, lr=1e-4, n_epochs=1000, batch_size=64, AMP=False, seed=None):
+def main(fpath, lr=1e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
     # -----Torch Settings-----
     torch.autograd.set_detect_anomaly(True)
     torch.set_float32_matmul_precision('medium') # Not much speed up
+    np.set_printoptions(suppress=True, precision=3)
 
     # -----Load Dataset-----
     datasets_list = []
@@ -186,5 +187,10 @@ if __name__ == '__main__':
     # parser.add_argument('--n_steps', type=int, default=1000, help='denoising steps')
 
     args = parser.parse_args()
-    data_fpath_lst = ['./combined_data.csv', './combined_data_small.csv']
+    # data_fpath_lst = ['./combined_data_20240603_171745.csv', './combined_data_20240603_180522.csv', './combined_data_small.csv']
+    data_fpath_lst = ['./combined_data_20240603_1603.csv', 
+                      './combined_data_20240603_1709.csv', 
+                      './combined_data_20240603_1625.csv', 
+                      './combined_data_20240603_1648.csv', 
+                      './combined_data_20240521_1948.csv']
     main(data_fpath_lst)

@@ -1,1 +1,3 @@
 .DS_Store
+Logs/v*
+myenv/

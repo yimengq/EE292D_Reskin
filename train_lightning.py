@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 
-import plotly.graph_objs as go
+# import plotly.graph_objs as go
 import matplotlib.pyplot as plt
 
 # Single Sensor Model
@@ -41,15 +41,15 @@ class ReskinModel(pl.LightningModule):
 
         self.model = nn.Sequential(
             nn.Linear(15, 200),
-            nn.ReLU(),
+            nn.SiLU(),
             nn.Dropout(p=0.15),
             nn.Linear(200, 200),
             nn.Linear(200, 40),
             nn.Linear(40, 200),
-            nn.ReLU(),
+            nn.SiLU(),
             nn.Dropout(p=0.15),
             nn.Linear(200, 200),
-            nn.ReLU(),
+            nn.SiLU(),
             nn.Linear(200, 3)
         )
 
@@ -57,7 +57,7 @@ class ReskinModel(pl.LightningModule):
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
-        loss_dist, loss_force, loss_total = self.one_step(batch, batch_idx)
+        loss_dist, loss_force, loss_total = self.one_step(batch, batch_idx, train=True)
         self.log('train_loss', loss_total)
         self.log('train_loss_dist', loss_dist)
         self.log('train_loss_force', loss_force)
@@ -65,18 +65,23 @@ class ReskinModel(pl.LightningModule):
         return loss_total
 
     def validation_step(self, batch, batch_idx):
-        loss_dist, loss_force, loss_total = self.one_step(batch, batch_idx)
+        loss_dist, loss_force, loss_total = self.one_step(batch, batch_idx, train=False)
         self.log('val_loss', loss_total)
         self.log('val_loss_dist', loss_dist)
         self.log('val_loss_force', loss_force)
         return loss_total
+
+    def l1loss(self, outputs, targets):
+        loss_dist = nn.L1Loss()(outputs[:,:2], targets[:,:2])
+        loss_force = nn.L1Loss()(outputs[:,2], targets[:,2])
+        return loss_dist, loss_force, loss_dist+loss_force
     
     def loss(self, outputs, targets):
         loss_dist = nn.MSELoss()(outputs[:,:2], targets[:,:2])
         loss_force = nn.MSELoss()(outputs[:,2], targets[:,2])
         return loss_dist, loss_force, loss_dist+loss_force
     
-    def one_step(self, batch, batch_idx):
+    def one_step(self, batch, batch_idx, train):
         inputs, targets = batch
         outputs = self(inputs)
         loss_dist, loss_force, loss_total = self.loss(outputs, targets)
@@ -88,7 +93,7 @@ class ReskinModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=15)
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=10)
         return {
             'optimizer': optimizer,
             'lr_scheduler': {
@@ -110,11 +115,15 @@ fy, fz
 class IndentDataset(Dataset):
     def __init__(self, file_path, skip=0):
         # Load the data from the CSV file using numpy
-        data = np.genfromtxt(file_path, delimiter=',', skip_header=2)
+        data = np.genfromtxt(file_path, delimiter=',', skip_header=1)
+        # self.norm_vecB = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 
+        #                           0.1, 0.1, 0.1, 0.1, 0.1, 
+        #                           0.1, 0.1, 0.1, 0.1, 0.1])
         self.norm_vecB = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 
                                   0.1, 0.1, 0.1, 0.1, 0.1, 
-                                  0.1, 0.1, 0.1, 0.1, 0.1])
-        self.norm_vecF = np.array([0.1, 0.1, -0.25])
+                                  0.1, 0.1, 0.1, 0.1, 0.1])*10
+        # self.norm_vecF = np.array([0.1, 0.1, -0.25])
+        self.norm_vecF = np.array([1, 1, -1])
 
         # Extract the input features (B) and the labels (xyF)
         self.B = data[:, 5:20]*self.norm_vecB
@@ -135,7 +144,7 @@ class IndentDataset(Dataset):
         return B_sample, xyF_sample
 
 
-def main(fpath, lr=1e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
+def main(fpath, lr=3e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
     # -----Torch Settings-----
     torch.autograd.set_detect_anomaly(True)
     torch.set_float32_matmul_precision('medium') # Not much speed up
@@ -163,7 +172,7 @@ def main(fpath, lr=1e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
 
     # -----PL configs-----
     tensorboard = pl_loggers.TensorBoardLogger(save_dir="Logs",name='',flush_secs=1)
-    early_stop_callback = EarlyStopping(monitor='lr', stopping_threshold=2e-6, patience=n_epochs)   
+    early_stop_callback = EarlyStopping(monitor='lr', stopping_threshold=2e-7, patience=n_epochs)   
     checkpoint_callback = ModelCheckpoint(filename="{epoch}",     # Checkpoint filename format
                                           save_top_k=-1,          # Save all checkpoints
                                           every_n_epochs=1,               # Save every epoch
@@ -188,9 +197,16 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     # data_fpath_lst = ['./combined_data_20240603_171745.csv', './combined_data_20240603_180522.csv', './combined_data_small.csv']
-    data_fpath_lst = ['./combined_data_20240603_1603.csv', 
+    data_fpath_lst = [ 
+                      './combined_data_20240605_1414.csv',
+                      './combined_data_20240605_1436.csv', 
+                      './combined_data_20240605_1458.csv', 
+                      './combined_data_20240605_1531.csv',
+                      './combined_data_20240605_1604.csv',
+                        './combined_data_20240603_1603.csv', 
                       './combined_data_20240603_1709.csv', 
                       './combined_data_20240603_1625.csv', 
-                      './combined_data_20240603_1648.csv', 
-                      './combined_data_20240521_1948.csv']
+                      './combined_data_20240521_1948.csv',
+                      './combined_data_20240603_1648.csv',
+                      ]
     main(data_fpath_lst)

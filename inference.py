@@ -83,15 +83,15 @@ class ReskinModel(nn.Module):
         super(ReskinModel, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(15, 200),
-            nn.ReLU(),
+            nn.SiLU(),
             nn.Dropout(p=0.15),
             nn.Linear(200, 200),
             nn.Linear(200, 40),
             nn.Linear(40, 200),
-            nn.ReLU(),
+            nn.SiLU(),
             nn.Dropout(p=0.15),
             nn.Linear(200, 200),
-            nn.ReLU(),
+            nn.SiLU(),
             nn.Linear(200, 3)
         )
 

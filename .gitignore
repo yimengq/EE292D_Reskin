@@ -1,3 +1,4 @@
 .DS_Store
 Logs/v*
 myenv/
+__pycache__/

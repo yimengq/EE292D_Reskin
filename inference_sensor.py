@@ -1,0 +1,83 @@
+import torch
+import serial
+import torch.nn as nn
+import numpy as np
+# import tensorflow as tf
+from train_lightning import IndentDataset, ReskinModel
+from torch.utils.data import DataLoader, random_split, ConcatDataset
+from matplotlib import pyplot as plt
+
+class ReskinTorch():
+    def __init__(self, model_path):
+        self.model = ReskinModel()
+        self.model.load_state_dict(torch.load(model_path))
+        self.model.eval()  # Set the model to evaluation mode
+        self.denorm_vecB = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 
+                            0.1, 0.1, 0.1, 0.1, 0.1, 
+                            0.1, 0.1, 0.1, 0.1, 0.1], dtype=np.float32)
+        self.denorm_vecF = np.array([10, 10, -4])
+        
+    # Function to perform inference with PyTorch model
+    def infer(self, input_data):
+        input_tensor = torch.tensor(input_data, dtype=torch.float32)
+        with torch.no_grad():
+            output = self.model(input_tensor).cpu().numpy()
+        return output[:2], output[2]
+
+# Function to process and print a single line of data from the serial port
+def process_data(line, line_time):
+    parts = line.split("\t")
+    if len(parts) == 20:  # We expect 20 items (5 sensors * 4 data points each)
+        data = []  # List to store this timestep's data for all sensors
+        # print("Readings:")
+        for i in range(5):
+            sensor_id = i + 1
+            x, y, z, temp = parts[4 * i:4 * i + 4]
+            sensor_data = [line_time, sensor_id, float(x), float(y), float(z), float(temp)]
+            data.append(sensor_data)
+            # print(f"Time: {line_time} Sensor {sensor_id} - X: {x} Y: {y} Z: {z} Temp: {temp}")
+    else:
+        print("Incomplete data received:", line)
+    return data
+
+
+def main():
+    # Initialize ATI force sensor streaming
+    np.set_printoptions(precision=3, linewidth=200, suppress=True)
+
+    # Specify the serial port and baud rate
+    port = "/dev/tty.usbmodem12401"  # Adjust this to match your Arduino's connection port
+    baudrate = 115200
+    ser = serial.Serial(port, baudrate, timeout=1)
+
+    # List to store magnetometer data for each sensor
+    magnetometer_data = []
+    
+    # initialize reskin model
+    model_path = "Logs/version34/checkpoints/epoch=81.ckpt"
+    reskin = ReskinTorch(model_path)
+
+    try:
+        # Read serial data continuously
+        while True:
+            line_time = time.time()
+            if ser.in_waiting > 0:
+                line = ser.readline().decode('utf-8').strip()  # Decode the bytes to string
+                data = process_data(line, line_time)
+                
+                
+                if data_is_valid:
+                    location, force = reskin.infer(data)
+
+    except KeyboardInterrupt:
+        print("Program interrupted by the user.")
+        print("Final data collected:")
+        for idx, data in enumerate(magnetometer_data):
+            print(f"Time Step {idx + 1}: {data}")
+
+    finally:
+        ser.close()  # Close the serial connection when done
+
+
+if __name__ == "__main__":
+    main()

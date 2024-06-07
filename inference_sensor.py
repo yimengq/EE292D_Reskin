@@ -6,11 +6,12 @@ import numpy as np
 from train_lightning import IndentDataset, ReskinModel
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from matplotlib import pyplot as plt
+import time
 
 class ReskinTorch():
     def __init__(self, model_path):
-        self.model = ReskinModel()
-        self.model.load_state_dict(torch.load(model_path))
+        self.model = ReskinModel.load_from_checkpoint(model_path, lr=0.0)
+
         self.model.eval()  # Set the model to evaluation mode
         self.denorm_vecB = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 
                             0.1, 0.1, 0.1, 0.1, 0.1, 
@@ -36,9 +37,10 @@ def process_data(line, line_time):
             sensor_data = [line_time, sensor_id, float(x), float(y), float(z), float(temp)]
             data.append(sensor_data)
             # print(f"Time: {line_time} Sensor {sensor_id} - X: {x} Y: {y} Z: {z} Temp: {temp}")
+        return np.array(data)[:,2:-1].flatten()
     else:
         print("Incomplete data received:", line)
-    return data
+        return None
 
 
 def main():
@@ -46,7 +48,7 @@ def main():
     np.set_printoptions(precision=3, linewidth=200, suppress=True)
 
     # Specify the serial port and baud rate
-    port = "/dev/tty.usbmodem12401"  # Adjust this to match your Arduino's connection port
+    port = "/dev/tty.usbmodem14401"  # Adjust this to match your Arduino's connection port
     baudrate = 115200
     ser = serial.Serial(port, baudrate, timeout=1)
 
@@ -54,8 +56,13 @@ def main():
     magnetometer_data = []
     
     # initialize reskin model
-    model_path = "Logs/version34/checkpoints/epoch=81.ckpt"
+    model_path = "Logs/version_34/checkpoints/epoch=81.ckpt"
     reskin = ReskinTorch(model_path)
+    average_lst = []
+    average_flag = False
+
+    Bwindow = [[0]]
+    count = 0
 
     try:
         # Read serial data continuously
@@ -64,10 +71,33 @@ def main():
             if ser.in_waiting > 0:
                 line = ser.readline().decode('utf-8').strip()  # Decode the bytes to string
                 data = process_data(line, line_time)
-                
-                
-                if data_is_valid:
-                    location, force = reskin.infer(data)
+                if data is not None:
+                    if len(average_lst) < 1000:
+                        average_lst.append(data)
+                    else:
+                        if not average_flag:
+                            avg_value = np.array(average_lst).mean(axis=0)
+                        data = data-avg_value
+                        if len(Bwindow) > 200:
+                            Bwindow.pop(0)
+                        Bwindow.append(data)
+                        count += 1
+                        
+                        if count % 100 == 0:
+                            location, force = reskin.infer(np.array(Bwindow).mean(axis=0))
+                            # Bdata.append(data)
+                            plt.gcf().clear()
+                            plt.scatter(location[0], location[1], c='r', s=force**2 *30)
+                            plt.xlim(-5,20)
+                            plt.ylim(-10,20)
+                            plt.grid()
+                            plt.pause(0.05)
+
+                            print(location, force)
+                    
+                    
+                # if data_is_valid:
+                #     location, force = reskin.infer(data)
 
     except KeyboardInterrupt:
         print("Program interrupted by the user.")
@@ -77,6 +107,8 @@ def main():
 
     finally:
         ser.close()  # Close the serial connection when done
+        
+    plt.show()
 
 
 if __name__ == "__main__":

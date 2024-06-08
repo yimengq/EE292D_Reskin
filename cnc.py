@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 class StreamATI:
     def __init__(self) -> None:
         # Set the UDP IP and PORT
-        UDP_IP = "192.169.1.2"
+        UDP_IP = "10.34.83.23"
         UDP_PORT = 5005
         
         # Create a UDP socket
@@ -171,18 +171,28 @@ if __name__ == '__main__':
 
         # for z in tqdm(np.arange(1.2, 2.3, 0.2)):
         for z in tqdm(np.arange(1.2, 2.3, 0.2)):
+        # for z in [1.8]:
             for (x,y) in tqdm(coords):
+                
                 # print(x, y, z)
                 cnc.goto(x, y, 1)
+                time.sleep(0.5)
                 cnc.goto(x, y, -z)
-
                 # creat a point on the plot
                 handle.set_data(x, y)
                 plt.draw()
                 plt.pause(0.05)  # Pause to update the plot
-                
                 time.sleep(2)
                 cnc.goto(x, y, 1)
+
+                # print(x, y, z)
+                # cnc.goto(x, y, 1)
+                # cnc.goto(x, y, -z)
+                # time.sleep(2)
+                # cnc.goto(x, y, 1)
+                # print("finished")
+
+
 
         cnc.goto(coords[-1,0], coords[-1,1], 8)
         cnc.goto(0, 0, 8)

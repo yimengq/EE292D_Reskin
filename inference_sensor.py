@@ -56,7 +56,7 @@ def main():
     magnetometer_data = []
     
     # initialize reskin model
-    model_path = "Logs/version_44/checkpoints/epoch=435.ckpt"
+    model_path = "Logs/version_35/checkpoints/epoch=245.ckpt"
     reskin = ReskinTorch(model_path)
     average_lst = []
     average_flag = False

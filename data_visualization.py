@@ -37,6 +37,7 @@ if __name__ == '__main__':
             # './combined_data_20240603_1648.csv',
             # 'NC_notbrian_combined_20240603_170947.csv',
             'R_notbrian_combined_20240607_201327.csv',
+            # 'ZR_notbrian_combined_20240607_223438.csv',
             # 'notbrian_combined_20240603_170947.csv'
             ]
     main(fpath)

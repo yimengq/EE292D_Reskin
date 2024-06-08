@@ -66,6 +66,8 @@ def read_cnc_data(file_path):
         for row in data:
             timestamp, x_value, y_value, z_value = row
             timestamps.append(timestamp)
+            x_values = [x * 0.0 for x in x_values]  # This scales each element by 0.0
+            y_values = [y * 0.0 for y in y_values]  # This scales each element by 0.0
             x_values.append(x_value)
             y_values.append(y_value)
             z_values.append(z_value)
@@ -85,6 +87,7 @@ def read_force_torque_data(file_path):
             force_torque_data['tz'].append(tz)
             force_torque_data['fx'].append(fx)
             force_torque_data['fy'].append(fy)
+            fz = fz * 0.0  # This scales the value by 0.0
             force_torque_data['fz'].append(fz)
     return timestamps, force_torque_data
 
@@ -219,7 +222,9 @@ def main(reduction=False, calib_window_length=60):
         print("First 5 rows of combined data:\n", combined_data[:5])
 
         # Save the combined matrix to a file for further use
-        np.savetxt(f'R_notbrian_combined_{timestamp_str}.csv', combined_data, delimiter=',', fmt='%s', header='timestamp,x_cnc,y_cnc,z_cnc,timestamp_mag,Bx1,By1,Bz1,Bx2,By2,Bz2,Bx3,By3,Bz3,Bx4,By4,Bz4,Bx5,By5,Bz5,timestamp_ft,tx,ty,tz,fx,fy,fz', comments='')
+        # np.savetxt(f'R_notbrian_combined_{timestamp_str}.csv', combined_data, delimiter=',', fmt='%s', header='timestamp,x_cnc,y_cnc,z_cnc,timestamp_mag,Bx1,By1,Bz1,Bx2,By2,Bz2,Bx3,By3,Bz3,Bx4,By4,Bz4,Bx5,By5,Bz5,timestamp_ft,tx,ty,tz,fx,fy,fz', comments='')
+        np.savetxt(f'ZR_notbrian_combined_{timestamp_str}.csv', combined_data, delimiter=',', fmt='%s', header='timestamp,x_cnc,y_cnc,z_cnc,timestamp_mag,Bx1,By1,Bz1,Bx2,By2,Bz2,Bx3,By3,Bz3,Bx4,By4,Bz4,Bx5,By5,Bz5,timestamp_ft,tx,ty,tz,fx,fy,fz', comments='')
+
 
     # Save all the averages to a single file using csv module
     with open(f'averages_{timestamp_str}.csv', 'w', newline='') as csvfile:

@@ -220,6 +220,7 @@ if __name__ == '__main__':
                     'R_notbrian_combined_20240607_201327.csv',
                     'R_notbrian_combined_20240605_181335.csv',
                     'R_notbrian_combined_20240605_175148.csv',
+                    # 'ZR_notbrian_combined_20240607_223438.csv',
                     # 'ffR_notbrian_combined_20240605_163741.csv'
                     # 'ffR_notbrian_combined_20240605_160411.csv'
                       ]

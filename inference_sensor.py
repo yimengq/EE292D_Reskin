@@ -15,8 +15,8 @@ class ReskinTorch():
         self.model.eval()  # Set the model to evaluation mode
         self.denorm_vecB = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 
                             0.1, 0.1, 0.1, 0.1, 0.1, 
-                            0.1, 0.1, 0.1, 0.1, 0.1], dtype=np.float32)
-        self.denorm_vecF = np.array([10, 10, -4])
+                            0.1, 0.1, 0.1, 0.1, 0.1], dtype=np.float32)*10
+        self.denorm_vecF = np.array([1, 1, -1])
         
     # Function to perform inference with PyTorch model
     def infer(self, input_data):
@@ -48,7 +48,7 @@ def main():
     np.set_printoptions(precision=3, linewidth=200, suppress=True)
 
     # Specify the serial port and baud rate
-    port = "/dev/tty.usbmodem14401"  # Adjust this to match your Arduino's connection port
+    port = "/dev/tty.usbmodem12301"  # Adjust this to match your Arduino's connection port
     baudrate = 115200
     ser = serial.Serial(port, baudrate, timeout=1)
 
@@ -56,12 +56,12 @@ def main():
     magnetometer_data = []
     
     # initialize reskin model
-    model_path = "Logs/version_34/checkpoints/epoch=81.ckpt"
+    model_path = "Logs/version_44/checkpoints/epoch=435.ckpt"
     reskin = ReskinTorch(model_path)
     average_lst = []
     average_flag = False
 
-    Bwindow = [[0]]
+    Bwindow = []
     count = 0
 
     try:
@@ -84,6 +84,11 @@ def main():
                         count += 1
                         
                         if count % 100 == 0:
+                            # average_B = np.array(Bwindow).mean(axis=0)
+                            # plt.clf()
+                            # plt.plot(np.arange(0,15), average_B)
+                            # plt.grid()
+                            # plt.ylim([-15,15])
                             location, force = reskin.infer(np.array(Bwindow).mean(axis=0))
                             # Bdata.append(data)
                             plt.gcf().clear()

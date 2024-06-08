@@ -93,7 +93,7 @@ class ReskinModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=10)
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=30)
         return {
             'optimizer': optimizer,
             'lr_scheduler': {
@@ -144,7 +144,7 @@ class IndentDataset(Dataset):
         return B_sample, xyF_sample
 
 
-def main(fpath, lr=3e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
+def main(fpath, lr=1e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
     # -----Torch Settings-----
     torch.autograd.set_detect_anomaly(True)
     torch.set_float32_matmul_precision('medium') # Not much speed up
@@ -156,10 +156,11 @@ def main(fpath, lr=3e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
         datasets_list.append(IndentDataset(raw_data_path, skip=0))
         print("Loaded dataset length: ",len(datasets_list[-1]))
 
-    train_dataset = ConcatDataset(datasets_list[:-1])
-    # train_dataset, test_dataset = random_split(full_dataset, [int(len(full_dataset)*0.9), len(full_dataset)-int(len(full_dataset)*0.9)])
-    test_dataset = datasets_list[-1]
-    # test_dataset.skip = 5  # So that validation is much faster
+    # train_dataset = ConcatDataset(datasets_list[:-1])
+    # test_dataset = datasets_list[-1]
+    full_dataset = ConcatDataset(datasets_list)
+    train_dataset, test_dataset = random_split(full_dataset, [int(len(full_dataset)*0.9), len(full_dataset)-int(len(full_dataset)*0.9)])
+
     
     train_data_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
     test_data_loader  = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
@@ -172,7 +173,7 @@ def main(fpath, lr=3e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
 
     # -----PL configs-----
     tensorboard = pl_loggers.TensorBoardLogger(save_dir="Logs",name='',flush_secs=1)
-    early_stop_callback = EarlyStopping(monitor='lr', stopping_threshold=2e-7, patience=n_epochs)   
+    early_stop_callback = EarlyStopping(monitor='lr', stopping_threshold=2e-6, patience=n_epochs)   
     checkpoint_callback = ModelCheckpoint(filename="{epoch}",     # Checkpoint filename format
                                           save_top_k=-1,          # Save all checkpoints
                                           every_n_epochs=1,               # Save every epoch
@@ -182,7 +183,7 @@ def main(fpath, lr=3e-4, n_epochs=1000, batch_size=32, AMP=False, seed=None):
     # train model [mac use accelerator mps, else gpu]
     trainer = pl.Trainer(accelerator='cpu', devices=1, precision=("16-mixed" if AMP else 32), max_epochs=n_epochs, 
                          callbacks=[early_stop_callback, checkpoint_callback],
-                         logger=tensorboard, profiler="simple", val_check_interval=0.25, 
+                         logger=tensorboard, profiler="simple", val_check_interval=0.75, 
                          accumulate_grad_batches=1, gradient_clip_val=1.0, num_sanity_val_steps=0)
     
     trainer.validate(model=model, dataloaders=test_data_loader)
@@ -197,16 +198,29 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     # data_fpath_lst = ['./combined_data_20240603_171745.csv', './combined_data_20240603_180522.csv', './combined_data_small.csv']
+    # data_fpath_lst = [ 
+    #                   './combined_data_20240605_1414.csv',
+    #                   './combined_data_20240605_1436.csv', 
+    #                   './combined_data_20240605_1458.csv', 
+    #                   './combined_data_20240605_1531.csv',
+    #                   './combined_data_20240605_1604.csv',
+    #                     './combined_data_20240603_1603.csv', 
+    #                   './combined_data_20240603_1709.csv', 
+    #                   './combined_data_20240603_1625.csv', 
+    #                   './combined_data_20240521_1948.csv',
+    #                   './combined_data_20240603_1648.csv',
+    #                   ]
     data_fpath_lst = [ 
-                      './combined_data_20240605_1414.csv',
-                      './combined_data_20240605_1436.csv', 
-                      './combined_data_20240605_1458.csv', 
-                      './combined_data_20240605_1531.csv',
-                      './combined_data_20240605_1604.csv',
-                        './combined_data_20240603_1603.csv', 
-                      './combined_data_20240603_1709.csv', 
-                      './combined_data_20240603_1625.csv', 
-                      './combined_data_20240521_1948.csv',
-                      './combined_data_20240603_1648.csv',
+                    #   './notbrian_combined_20240603_145437.csv',
+                    #   './notbrian_combined_20240603_160317.csv', 
+                    #   './notbrian_combined_20240603_162518.csv', 
+                    #   './notbrian_combined_20240603_164802.csv',
+                    #   './notbrian_combined_20240603_170947.csv',
+                    #     './notbrian_combined_20240521_194804.csv', 
+                    'R_notbrian_combined_20240607_201327.csv',
+                    'R_notbrian_combined_20240605_181335.csv',
+                    'R_notbrian_combined_20240605_175148.csv',
+                    # 'ffR_notbrian_combined_20240605_163741.csv'
+                    # 'ffR_notbrian_combined_20240605_160411.csv'
                       ]
     main(data_fpath_lst)
